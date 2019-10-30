@@ -1,99 +1,21 @@
-#Step1: Mapping 
-
-#```$ bash analysis.sh```
-
-##analysis.sh
-
-```bash
-#!/bin/bash
-set -x
-opath="./output/log"
-# 分别对四个数据集s1,s3,s5,s11进行分析
-for sample in "s1" "s3" "s5" "s11"
-do
-
-mkdir ./output
-mkdir ./output/log
-mkdir ./output/preprocess
-mkdir ./output/result
-mkdir ./output/genome
-mkdir ./output/other
-#预处理
-bash ./preprocess.sh ${sample}.fastq  > ${opath}/preprocess.log 2>&1
-#genome mapping
-bash ./genomemap.sh > ${opath}/genomemap.log 2>&1
-#其他small rna db mapping
-bash ./otherdbmap.sh > ${opath}/otherdbmap.log 2>&1
-#bash ./mergeresult.sh > ${opath}/mergeresult.log 2>&1
-mv ./output ./output${sample}
-done
+# Step1: Mapping: shell scripts
+```shell
+$ bash analysis.sh
 ```
-##genomemap.sh
-
-```bash
-# !/bin/bash
-set -x
-
-uppath="./output/preprocess"
-opath="./output/genome"
-rpath="./output/result"
-ref="genome"
-
-#bowtie mapping
-bowtie -q --threads 40 -v 1 -m 1 -a ${ref} ${uppath}/rename.fastq --sam > ${opath}/${ref}mapped.sam
-
-#sam 2 bam
-samtools import ${ref}.fa ${opath}/${ref}mapped.sam ${opath}/${ref}mapped.bam
-
-#sort bam
-samtools sort ${opath}/${ref}mapped.bam -o ${opath}/${ref}sorted.bam
-
-#build index
-samtools index ${opath}/${ref}sorted.bam
-
-#umi_tool deduplicate based on UMI and read sequence, considering read-length, method=unique
-umi_tools dedup -I ${opath}/${ref}sorted.bam --method=unique --read-length -S ${opath}/${ref}deduplicated.bam
-
-#bam 2 sam
-samtools view -h -o ${opath}/${ref}deduplicated.sam ${opath}/${ref}deduplicated.bam
-
-### remove @ head, extract col 1,10,3 (name, sequence, ref)
-cat ${opath}/${ref}deduplicated.sam|sed -e '/^@/d' | awk '{print $1, $10,$3}' > ${rpath}/${ref}nohead.txt
+Required file folder framework: (put the shell scripts, fastq files and fa files at the same folder)
 ```
-##otherdbmap.sh
-
-```bash
-# !/bin/bash 
-set -x
-uppath="./output/preprocess"
-opath="./output/other"
-rpath="./output/result"
-
-cp ${uppath}/rename.fastq ${opath}/unmap.fastq
-
-for ref in 'hg19-tRNAs' 'human_rRNA_5.8S' 'human_rRNA_5S' 'human_rRNA_12S' 'human_rRNA_16S' 'human_rRNA_18S' 'human_rRNA_28S' 'human_rRNA_45S' 'human_rRNA_other' 'miRBase_21-hsa' 'piR_human' 'piR_human_rev' 'Rfam-12.3-human'
-do
-bowtie -q --threads 40 -v 1 -m 1 -a ${ref} ${opath}/unmap.fastq --un ${opath}/unmap.fq --sam > ${opath}/${ref}mapped.sam
-
-samtools import ${ref}.fa ${opath}/${ref}mapped.sam ${opath}/${ref}mapped.bam
-
-samtools sort ${opath}/${ref}mapped.bam -o ${opath}/${ref}sorted.bam
-
-samtools index ${opath}/${ref}sorted.bam
-
-umi_tools dedup -I ${opath}/${ref}sorted.bam --method=unique --read-length -S ${opath}/${ref}deduplicated.bam
-
-samtools view -h -o ${opath}/${ref}deduplicated.sam ${opath}/${ref}deduplicated.bam
-
-mv ${opath}/unmap.fq ${opath}/unmap.fastq
-
-### remove @ head, extract col 1,10,3 (name, sequence, ref)
-cat ${opath}/${ref}deduplicated.sam|sed -e '/^@/d'|awk '{print $1,$10,$3}' > ${rpath}/${ref}nohead.txt
-
-done
+.
+├── analysis.sh
+├── preprocess.sh
+├── rename.py
+├── genomemap.sh
+├── otherdbmap.sh
+├── *.fastq (s1,s3,s5,s11)
+├── *.fa (ref libraries)
 ```
 
-# Step1 Result:
+After mapping, there should be output folders for sample files. 
+Inside the output folder, such as 'outpus1' for s1, there should be 4 folders (log, preprocess, genome, other) as follow:
 
 ```
 .
@@ -212,67 +134,33 @@ done
 ```
 
 
+# Step2: Analysis: Python scripts
 
-#Step2: Result Analysis
+**resultanalysis.py:** Analysis mapping results. 
 
-#```python resultanalysis.py```
+​	Input: *nohead.text files reduced by mapping. (in the 'result' folder)
 
-resultanalysis.py
+​	Output: 'y_rnadb_y_genome_result.csv' and 'n_rnadb_y_genome_result.csv'
 
-```python
-import pandas as pd
+**unmapanalysis.py:** transfer fastq to fasta. Remove PCR duplication (deduplicate by UMI and reads). Count and remove dupication (deduplicate by reads). 
 
-#读入txt（小rna数据库结果)
-rna_dbs=['hg19-tRNAs','human_rRNA_5.8S','human_rRNA_5S','human_rRNA_12S','human_rRNA_16S','human_rRNA_18S','human_rRNA_28S','human_rRNA_45S','human_rRNA_other','miRBase_21-hsa','piR_human','piR_human_rev','Rfam-12.3-human']
-genome='genome'
-for idx in range(0, len(rna_dbs)):
-    if idx == 0:
-        rs_rnadb = pd.read_table(rna_dbs[idx] + 'nohead.txt',header=None,sep=' ',names=['name','reads', rna_dbs[idx]])
-        print(rna_dbs[idx],rs_rnadb.shape)
-    else:
-        df = pd.read_table(rna_dbs[idx] + 'nohead.txt',header=None,sep=' ', names=['name','reads', rna_dbs[idx]])
-        print(rna_dbs[idx],df.shape)
-        rs_rnadb = pd.merge(rs_rnadb, df, how = 'outer', on = ['name','reads'], suffixes=[rna_dbs[idx-1], rna_dbs[idx]]).fillna('*')
-        print(rs_rnadb.shape)
+​	Input: unmapped reads in fastq format. 
 
-#读入txt（genome mapping结果)
-rs_genome = pd.read_table(genome + 'nohead.txt',header=None,sep=' ', names=['name','reads', 'genome'])
-print(rs_genome.shape)
+​	output: unmapped reads in fastq format with idx and count number in name.
 
-#merge genome and small RNA DB mapping results
-rs = pd.merge(rs_genome, rs_rnadb, how = 'outer', on = ['name']).fillna('NA')
-print(rs.shape)
+**graph.py:** draw pie graph for 'y_rnadb_y_genome_result.csv'.
 
-#group by small rna ref
-rs_group=rs.groupby(rna_dbs).describe().reset_index()
-
-#write to csv
-rs_group.to_csv('./finalresult.csv',index=False)
-
+Command Example:
+```shell
+python resultanalysis.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/result/ -o /zlab/data/Huang1/smallrnaseqTest/outputs3/result/
+python graph.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/result/ -o /zlab/data/Huang1/smallrnaseqTest/outputs3/result/
+python unmapanalysis.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/other/ -o /zlab/data/Huang1/smallrnaseqTest/outputs3/other/
+python unmapanalysis.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/genome/ -o /zlab/data/Huang1/smallrnaseqTest/outputs3/genome/
 ```
 
-#Step2 result: finalresult.csv
 
-![1571588668590](C:\Users\admin\AppData\Roaming\Typora\typora-user-images\1571588668590.png)
 
-```
-hg19-tRNAs,human_rRNA_5.8S,human_rRNA_5S,human_rRNA_12S,human_rRNA_16S,human_rRNA_18S,human_rRNA_28S,human_rRNA_45S,human_rRNA_other,miRBase_21-hsa,piR_human,piR_human_rev,Rfam-12.3-human,name,name,name,name,reads_x,reads_x,reads_x,reads_x,genome,genome,genome,genome,reads_y,reads_y,reads_y,reads_y
-,,,,,,,,,,,,,count,unique,top,freq,count,unique,top,freq,count,unique,top,freq,count,unique,top,freq
-*,*,*,*,*,*,*,*,*,*,*,*,AADB02000969.1/1180739-1181019,7,7,15404473_ACCCGGGCGTTCTGT,1,7,1,NA,7,7,1,NA,7,7,7,GGGAGGTGGAGGTGGAGT,1
-*,*,*,*,*,*,*,*,*,*,*,*,AADB02001193.1/31306-31018,1,1,13017009_GAAACACTTTTCCCT,1,1,1,NA,1,1,1,NA,1,1,1,AATCTGCAAGTGT,1
-*,*,*,*,*,*,*,*,*,*,*,*,AADB02013261.1/2344330-2344071,4,4,1219071_TCCAGGCCTGCCACT,1,4,1,NA,4,4,1,NA,4,4,1,TGGTACTCTTTTT,4
-*,*,*,*,*,*,*,*,*,*,*,*,AADB02013937.1/195-495,1,1,10507606_GAGGAGCTCTCAAAT,1,1,1,NA,1,1,1,NA,1,1,1,CTGCACTCCAGCCTGGGCGACGGAGCGAGACTCCC,1
-```
-
-# Step3 : Unmapped reads analysis
-
-没有比对到small RNA DB 的reads: unmap.fastq
-
-```
-collapse: unmap.fastq -> unmap.fa
-```
-
-# Blast+
+# BLAST+ analysis
 
 ```shell
 $ blastn -db nt -query unmap.fa -outfmt 11 -out 'rnadbunmap.blastn@nr.asn' -num_threads 10
@@ -284,26 +172,32 @@ $ blast_formatter -archive "rnadbunmap.blastn@nr.asn" -outfmt "6 qseqid qlen sse
 $ awk '!a[$1]++{print}' rnadbunmap.blastn@nr.blast > uniqrnadbunmap.blastn@nr.blast
 ```
 
-结果目录：/zlab/data/Huang1/smallrnaseqTest/nogenomeresults/temp/
+Blast -m 6格式就是 Blast -m 8格式。
 
-![1571644824063](C:\Users\admin\AppData\Roaming\Typora\typora-user-images\1571644824063.png)
+-m 6格式共12列，每列意思如下：
 
-从图中可以看出共12列，下面来列举一下这12列的意思
-1、Query id：查询序列ID标识
-2、Subject id：比对上的目标序列ID标识
-3、% identity：序列比对的一致性百分比
-4、alignment length：符合比对的比对区域的长度
-5、mismatches：比对区域的错配数
-6、gap openings：比对区域的gap数目
-7、q. start：比对区域在查询序列(Query id)上的起始位点
-8、q. end：比对区域在查询序列(Query id)上的终止位点
-9、s. start：比对区域在目标序列(Subject id)上的起始位点
-10、s. end：比对区域在目标序列(Subject id)上的终止位点
-11、e-value：比对结果的期望值，解释是大概多少次随即比对才能出现一次这个score, E-value越小，表明这种情况从概率上越不可能发生，那么发生了即说明这更有可能是真实的相似序列
-12、bit score：比对结果的bit score值
-一般情况我们看第3、11、12两列，e值越小越可靠。
+1. Query id：查询序列ID标识
 
-python resultanalysis.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/result/ -o /zlab/data/Huang1/smallrnaseqTest/outputs3/result/
-python graph.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/result/ -o /zlab/data/Huang1/smallrnaseqTest/outputs3/result/
-python unmapanalysis.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/other/ -o /zlab/data/Huang1/smallrnaseqTest/outputs3/other/
-python unmapanalysis.py -i /zlab/data/Huang1/smallrnaseqTest/outputs3/other/ -o /zlab/data/genome/smallrnaseqTest/outputs3/genome/
+2. Subject id：比对上的目标序列ID标识
+
+3. % identity：序列比对的一致性百分比
+
+4. alignment length：符合比对的比对区域的长度
+
+5. mismatches：比对区域的错配数
+
+6. gap openings：比对区域的gap数目
+
+7. q. start：比对区域在查询序列(Query id)上的起始位点
+
+8. q. end：比对区域在查询序列(Query id)上的终止位点
+
+9. s. start：比对区域在目标序列(Subject id)上的起始位点
+
+10. s. end：比对区域在目标序列(Subject id)上的终止位点
+
+11. e-value：比对结果的期望值，解释是大概多少次随即比对才能出现一次这个score, E-value越小，表明这种情况从概率上越不可能发生，那么发生了即说明这更有可能是真实的相似序列
+
+12. bit score：比对结果的bit score值
+
+    一般情况我们看第3、11、12两列，e值越小越可靠。
