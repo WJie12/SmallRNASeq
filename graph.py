@@ -40,7 +40,7 @@ def main():
     rs_csv = pd.read_csv(input_path + 'y_rnadb_y_genome_result.csv')
 
     count_list = []
-    rna_dbs = ['hg19-tRNAs', 'human_rRNA_5.8S', 'human_rRNA_5S', 'human_rRNA_12S', 'human_rRNA_16S', 'human_rRNA_18S',
+    rna_dbs = ['mature-hg19-tRNAs', 'hg19-tRNAs', 'human_rRNA_5.8S', 'human_rRNA_5S', 'human_rRNA_12S', 'human_rRNA_16S', 'human_rRNA_18S',
                'human_rRNA_28S', 'human_rRNA_45S', 'human_rRNA_other', 'miRBase_21-hsa', 'piR_human','Rfam-12.3-human']
     for idx in range(0, len(rna_dbs)):
         no_nan = rs_csv[~rs_csv[rna_dbs[idx]].isin(['*', 'NA'])]
@@ -59,7 +59,7 @@ def main():
     sizes = df['count'] = count_list
     # colors = ['red','yellowgreen','lightskyblue']
     # 将某部分爆炸出来， 使用括号，数值的大小是分割出来的与其他两块的间隙
-    explode = (0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0)
+    explode = (0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0)
     colors = cm.rainbow(np.arange(len(sizes)) / len(sizes))
 
     patches, l_text, p_text = plt.pie(sizes, explode=explode, colors=colors,

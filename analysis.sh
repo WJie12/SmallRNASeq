@@ -11,7 +11,7 @@ opath='./'${output}'/log'
 
 
 #for sample in 's1'
-for sample in s11
+for sample in s1 s3 s5 s11
 do
 
 mkdir ./${output}

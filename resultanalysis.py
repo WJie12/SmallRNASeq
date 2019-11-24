@@ -22,7 +22,7 @@ def getopts(argv):
 
 def analysis_reads(input_path, output_path):
     # load smallRNA DB mapping result, merge
-    rna_dbs = ['hg19-tRNAs', 'human_rRNA_5.8S', 'human_rRNA_5S', 'human_rRNA_12S', 'human_rRNA_16S', 'human_rRNA_18S',
+    rna_dbs = ['mature-hg19-tRNAs', 'hg19-tRNAs', 'human_rRNA_5.8S', 'human_rRNA_5S', 'human_rRNA_12S', 'human_rRNA_16S', 'human_rRNA_18S',
                'human_rRNA_28S', 'human_rRNA_45S', 'human_rRNA_other', 'miRBase_21-hsa', 'piR_human', 'Rfam-12.3-human']
     genome = 'genome'
     for idx in range(0, len(rna_dbs)):

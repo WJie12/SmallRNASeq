@@ -6,7 +6,7 @@ rpath="./output/result"
 
 cp ${uppath}/rename.fastq ${opath}/unmap.fastq
 
-for ref in 'hg19-tRNAs' 'human_rRNA_5.8S' 'human_rRNA_5S' 'human_rRNA_12S' 'human_rRNA_16S' 'human_rRNA_18S' 'human_rRNA_28S' 'human_rRNA_45S' 'human_rRNA_other' 'miRBase_21-hsa' 'piR_human' 'Rfam-12.3-human'
+for ref in 'mature-hg19-tRNAs' 'hg19-tRNAs' 'human_rRNA_5.8S' 'human_rRNA_5S' 'human_rRNA_12S' 'human_rRNA_16S' 'human_rRNA_18S' 'human_rRNA_28S' 'human_rRNA_45S' 'human_rRNA_other' 'miRBase_21-hsa' 'piR_human' 'Rfam-12.3-human'
 do
 bowtie -q --threads 40 -v 1 -m 1 -a ${ref} ${opath}/unmap.fastq --un ${opath}/unmap.fq --sam > ${opath}/${ref}mapped.sam
 
