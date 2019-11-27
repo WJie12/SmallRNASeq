@@ -48,18 +48,18 @@ def main():
         no_nan_name = no_nan['name']
         count_list.append(no_nan_name.astype(int).sum())
     df = pd.DataFrame(columns=('db', 'count'))
-    df['db'] = rna_dbs
-    df['count'] = count_list
+    df['db'] = ['tRNA', 'rRNA', 'miRNA', 'piRNA', 'Rfam']
+    df['count'] = [sum(count_list[0:1]), sum(count_list[2:9]), count_list[10], count_list[11], count_list[12]]
 
     # 调节图形大小，宽，高
     plt.figure(figsize=(12, 6))
     # 定义饼状图的标签，标签是列表
     labels = df['db']
     # 每个标签占多大，会自动去算百分比
-    sizes = df['count'] = count_list
+    sizes = df['count']
     # colors = ['red','yellowgreen','lightskyblue']
     # 将某部分爆炸出来， 使用括号，数值的大小是分割出来的与其他两块的间隙
-    explode = (0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0, 0.05, 0)
+    explode = (0, 0.05, 0, 0.05, 0)
     colors = cm.rainbow(np.arange(len(sizes)) / len(sizes))
 
     patches, l_text, p_text = plt.pie(sizes, explode=explode, colors=colors,
@@ -85,6 +85,7 @@ def main():
     plt.title("small RNA database mapping result")
     plt.savefig(output_path + 'y_rnadb_y_genome_result.png')
     plt.show()
+    plt.close()
 
 
 if __name__ == "__main__":
