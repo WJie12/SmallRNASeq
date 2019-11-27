@@ -20,6 +20,6 @@ umi_tools dedup -I ${opath}/${ref}sorted.bam --method=unique --read-length -S ${
 
 samtools view -h -o ${opath}/${ref}deduplicated.sam ${opath}/${ref}deduplicated.bam 
 
-### 1 col $ 3 col
-cat ${opath}/${ref}deduplicated.sam|sed -e '/^@/d' | awk '{print $1,$10,$3}' > ${rpath}/${ref}nohead.txt
+### name, reads, ref, pos
+cat ${opath}/${ref}deduplicated.sam|sed -e '/^@/d' | awk '{print $1,$10,$3,$4}' > ${rpath}/${ref}nohead.txt
 ### remove @ head

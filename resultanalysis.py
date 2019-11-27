@@ -39,7 +39,7 @@ def analysis_reads(input_path, output_path):
             print(rs_rnadb.shape)
     # load genome mapping result, merge
     rs_genome = pd.read_table(input_path + genome + 'nohead.txt', header=None, sep=' ',
-                              names=['name', 'reads', 'genome'])
+                              names=['name', 'reads', 'genome', 'pos'])
     print(rs_genome.shape)
 
     rs = pd.merge(rs_genome, rs_rnadb, how='outer', on=['name']).fillna('*')
@@ -51,7 +51,7 @@ def analysis_reads(input_path, output_path):
     print("--------y_rnadb_y_genome_result.csv finished---------")
 
     rnadbunmap = rs_group.get_group(('*',) * len(rna_dbs))
-    rnadbunmap_group = rnadbunmap.groupby('genome').describe().reset_index()
+    rnadbunmap_group = rnadbunmap.groupby(['genome', 'pos']).describe().iloc[:, 9].reset_index()
     rnadbunmap_group.to_csv(output_path + 'n_rnadb_y_genome_result.csv', index=False)
     print("--------n_rnadb_y_genome_result.csv finished---------")
     return 0
