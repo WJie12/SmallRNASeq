@@ -51,7 +51,8 @@ def analysis_reads(input_path, output_path):
     print("--------y_rnadb_y_genome_result.csv finished---------")
 
     rnadbunmap = rs_group.get_group(('*',) * len(rna_dbs))
-    rnadbunmap_group = rnadbunmap.groupby(['genome', 'pos']).describe().iloc[:, 9].reset_index()
+    rnadbunmap_group = rnadbunmap.groupby(['genome', 'pos']).describe().reset_index()
+    rnadbunmap_group = rnadbunmap_group.iloc[:, 0:10]
     rnadbunmap_group.to_csv(output_path + 'n_rnadb_y_genome_result.csv', index=False)
     print("--------n_rnadb_y_genome_result.csv finished---------")
     return 0
@@ -79,7 +80,6 @@ def main():
         return -2
 
     analysis_reads(input_path, output_path)
-
 
 
 if __name__ == "__main__":
